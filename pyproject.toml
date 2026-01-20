@@ -1,0 +1,30 @@
+[tool.poetry]
+name = "filament-box-shelves"
+version = "0.1.0"
+description = "CAD logic to create parts for my modular shelving project"
+authors = ["Tim Prince <tim.prince@gmail.com>"]
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.13"
+build123d = "0.10.*"
+ocp-vscode = "3.*"
+
+[tool.poetry.group.dev.dependencies]
+pylint = "*"
+flake8 = "*"
+mypy = "*"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pylint.format]
+max-line-length = 120
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+check_untyped_defs = true
+warn_unused_configs = true
