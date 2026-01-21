@@ -109,6 +109,7 @@ def basic_bracket(slat_width: float, with_label: str | None = None) -> b.BuildPa
                 b.offset(amount=PARAMS.tolerance, kind=b.Kind.INTERSECTION)
 
         b.extrude(amount=PARAMS.rail_slot_depth, dir=(0, 1, 0), mode=b.Mode.SUBTRACT)
+        b.RigidJoint(label="bolt_hole", joint_location=b.Location((0, 0, PARAMS.shell_thickness)))
 
         if with_label is not None:
             text_face = p.faces().sort_by(b.Axis.Y)[0]
@@ -142,11 +143,18 @@ def universal_bracket(square_rail_width: float,
     square_bracket_length = get_bracket_length(square_bracket_template)
 
     with b.BuildPart() as p:
-        with b.PolarLocations(
+        locs = b.PolarLocations(
             radius=square_bracket_length,
-            count=4
-        ):
-            b.add(square_bracket_template)
+            count=4,
+        )
+
+        for i, loc in enumerate(locs):
+            with b.Locations(loc):
+                b.add(square_bracket_template)
+
+            pos = loc.position + (0, 0, PARAMS.shell_thickness)
+            b.RigidJoint(label=f"bolt_hole_{i}",
+                         joint_location=b.Location(pos))
 
         text: b.Text | None = None
         with b.BuildSketch():
@@ -193,6 +201,15 @@ def rail_part(rail_length: float, with_label: str | None = None) -> b.BuildPart:
         cut, engrave = rail_sketch(rail_length, with_label)
         b.extrude(cut.sketch, amount=PARAMS.plywood_thickness)
 
+        b.RigidJoint(label="left_bolt",
+                     joint_location=b.Location(
+                         (-rail_length / 2 + PARAMS.rail_slot_depth / 2, 0, 0)
+                         ))
+        b.RigidJoint(label="right_bolt",
+                     joint_location=b.Location(
+                         (rail_length / 2 - PARAMS.rail_slot_depth / 2, 0, 0)
+                         ))
+
         if with_label is not None:
             b.extrude(engrave.sketch.move(
                 b.Location((0, 0, PARAMS.plywood_thickness))),
@@ -223,38 +240,17 @@ def main(show_preview: bool, output_dir: Path | None):
 
     rail = rail_part(test_rail_length, "TR2")
 
-    rightmost_bracket_face = test_bracket.faces().sort_by(b.Axis.X)[-1]
-    rightmost_rail_face = rail.faces().sort_by(b.Axis.X)[-1]
-    leftmost_rail_face = rail.faces().sort_by(b.Axis.X)[0]
-    rightmost_ub_face = ub.faces().sort_by(b.Axis.X)[-1]
+    assert (test_bracket.part is not None
+            and ub.part is not None
+            and rail.part is not None)
 
-    # Translation needed to align the right bracket face with the right rail face
-    rail_dx = rightmost_bracket_face.center().X - rightmost_rail_face.center().X
+    ub.part.joints["bolt_hole_0"].connect_to(rail.part.joints["left_bolt"])
+    rail.part.joints["right_bolt"].connect_to(test_bracket.joints["bolt_hole"])
 
-    # Translation needed to align the left rail face with the right rail face
-    ub_dx = leftmost_rail_face.center().X - rightmost_ub_face.center().X
-
-    # Plus the additional translation needed to align the mounting holes
-    ub_dx += PARAMS.rail_slot_depth
-
-    # Align the rail with the first bracket
-    rail.part.move(  # type: ignore[union-attr]
-        b.Location((rail_dx, 0, PARAMS.shell_thickness))
-    )
-
-    # Move the second bracket to preserve the original arrangement relative
-    # to the rail
-    ub.part.move(  # type: ignore[union-attr]
-        b.Location((rail_dx, 0, 0))
-    )
-
-    # Now align the second bracket to the left side of the hole.
-    ub.part.move(  # type: ignore[union-attr]
-        b.Location((ub_dx, 0, 0))
-    )
+    assembly = b.Compound([test_bracket.part, rail.part, ub.part])
 
     if show_preview:
-        show(test_bracket, rail, ub, colors=ColorMap.set2())
+        show(assembly, colors=ColorMap.set2())
 
     if output_dir:
         # Ensure output directory exists
