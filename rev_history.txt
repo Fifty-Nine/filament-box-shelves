@@ -1,0 +1,17 @@
+Asterisks indicate that the revision has not yet
+been manufactured.
+
+TB:
+1) initial revision
+2) adjusted slot to match width across flats
+3*) adjusted logic to allow different slot orientations
+
+TBC:
+1*) initial revision (via TB3)
+
+UB:
+1*) initial revision
+
+TR:
+1) initial revision
+2*) adjust for laser kerf
