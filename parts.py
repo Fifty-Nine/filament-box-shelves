@@ -14,8 +14,7 @@ __all__ = [
     "hex_nut",
     "basic_bracket",
     "rail_sketch",
-    "rail_part",
-    "shelf_joiner_a1",
+    "rail_part"
 ]
 
 # ##### Part ID codes ######
@@ -198,16 +197,6 @@ def rail_part(rail_length: float, with_label: str | None = None) -> b.BuildPart:
             b.extrude(engrave.sketch.move(
                 b.Location((0, 0, PARAMS.plywood_thickness))),
                 amount=-0.2, mode=b.Mode.SUBTRACT)
-
-    return p
-
-
-def shelf_joiner_a1() -> b.BuildPart:
-    """
-    Creates the model for the rear end caps that hold the shelves together.
-    """
-    with b.BuildPart() as p:
-        b.add(basic_bracket(PARAMS.rail_width))
 
     return p
 
