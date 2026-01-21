@@ -1,17 +1,33 @@
 "CAD logic to create parts for my modular shelving project"
-from ocp_vscode import show
-import build123d as b
 from dataclasses import dataclass
 import copy
+from ocp_vscode import show
+import build123d as b
+
+__all__ = [
+    "BoxDimensions",
+    "DesignParameters",
+    "BOX_DIMS",
+    "PARAMS",
+    "hex_nut",
+    "basic_bracket",
+    "rail_sketch",
+    "rail_part",
+    "shelf_joiner_a1",
+]
+
 
 @dataclass
 class BoxDimensions:
+    """Dimensions of the box to be shelved."""
     width: float = 224
     length: float = 206
     height: float = 73
 
+
 @dataclass
 class DesignParameters:
+    """Configuration parameters for the design."""
     plywood_thickness: float = 3
     crossbar_width: float = 20
     rail_width: float = 20
@@ -26,98 +42,111 @@ class DesignParameters:
     font_size: float = 7
     laser_kerf: float = 0.1
 
-bdims = BoxDimensions()
-params = DesignParameters()
+    def check(self):
+        """Checks if parameters are valid."""
+        if PARAMS.shell_thickness - PARAMS.nut_height < (2 * PARAMS.min_thickness):
+            raise ValueError("Minimum thickness exceeded.")
 
 
-def check_params():
-    if params.shell_thickness - params.nut_height < (2 * params.min_thickness):
-        raise Exception("Shell thickness too small to allow fully captive nut.")
+BOX_DIMS = BoxDimensions()
+PARAMS = DesignParameters()
 
-check_params()
+_NUT_TEMPLATE: b.BuildPart | None = None
 
-nut_template: b.BuildPart | None = None
 
 def hex_nut() -> b.BuildPart:
-    global nut_template
+    """
+    Creates a hex nut model.
+    """
+    global _NUT_TEMPLATE
+    if _NUT_TEMPLATE is None:
+        with b.BuildPart() as p:
+            with b.BuildSketch():
+                b.RegularPolygon(PARAMS.nut_radius / 2, 6)
+                b.Circle(PARAMS.bolt_hole_diameter / 2, mode=b.Mode.SUBTRACT)
 
-    if nut_template is not None:
-        return copy.copy(nut_template)
+            b.extrude(amount=PARAMS.nut_height)
+        _NUT_TEMPLATE = p
 
-    with b.BuildPart() as p:
-        with b.BuildSketch():
-            b.RegularPolygon(params.nut_radius / 2, 6)
-            b.Circle(params.bolt_hole_diameter / 2, mode=b.Mode.SUBTRACT)
+    return copy.copy(_NUT_TEMPLATE)
 
-        b.extrude(amount=params.nut_height)
-
-    nut_template = p
-    return copy.copy(p)
 
 def basic_bracket(slat_width: float, with_label: str | None = None) -> b.BuildPart:
     """
     Creates a mounting bracket for mating plywood slats to a 3D printed part.
     """
     with b.BuildSketch(b.Plane.XY, mode=b.Mode.PRIVATE):
-        outer = b.Rectangle(params.rail_slot_depth,
-                            slat_width + params.shell_thickness*2)
-        inner = b.Rectangle(params.rail_slot_depth,
+        outer = b.Rectangle(PARAMS.rail_slot_depth,
+                            slat_width + PARAMS.shell_thickness*2)
+        inner = b.Rectangle(PARAMS.rail_slot_depth,
                             slat_width)
-        captive_nut = b.RegularPolygon(params.nut_radius / 2 + params.tolerance, 6).rotate(b.Axis.Z, 90)
+        captive_nut = b.RegularPolygon(
+            PARAMS.nut_radius / 2 + PARAMS.tolerance, 6
+        ).rotate(b.Axis.Z, 90)
 
     captive_nut_points = captive_nut.vertices()
     y_nut_min = captive_nut_points.sort_by(b.Axis.Y)[0].Y
-    nut_slot_width = captive_nut_points.sort_by(b.Axis.X)[-1].X - captive_nut_points.sort_by(b.Axis.X)[0].X
+    nut_points_x = captive_nut_points.sort_by(b.Axis.X)
+    nut_slot_width = nut_points_x[-1].X - nut_points_x[0].X
     nut_slot_plane = b.Plane.XZ.offset(-y_nut_min)
 
     with b.BuildPart() as p:
-        b.extrude(inner, params.shell_thickness)
+        b.extrude(inner, PARAMS.shell_thickness)
         b.extrude((outer - inner),
-                  params.shell_thickness + params.plywood_thickness)
-        b.Hole(params.bolt_hole_diameter / 2)
+                  PARAMS.shell_thickness + PARAMS.plywood_thickness)
+        b.Hole(PARAMS.bolt_hole_diameter / 2)
 
         with b.BuildSketch(nut_slot_plane):
-            with b.Locations((0, params.shell_thickness / 2)):
-                b.Rectangle(nut_slot_width, params.nut_height)
-                b.offset(amount=params.tolerance, kind=b.Kind.INTERSECTION)
+            with b.Locations((0, PARAMS.shell_thickness / 2)):
+                b.Rectangle(nut_slot_width, PARAMS.nut_height)
+                b.offset(amount=PARAMS.tolerance, kind=b.Kind.INTERSECTION)
 
-
-        b.extrude(amount=params.rail_slot_depth, dir=(0, 1, 0), mode=b.Mode.SUBTRACT)
+        b.extrude(amount=PARAMS.rail_slot_depth, dir=(0, 1, 0), mode=b.Mode.SUBTRACT)
 
         if with_label is not None:
             text_face = p.faces().sort_by(b.Axis.Y)[0]
 
             with b.BuildSketch(text_face):
-                text = b.Text(with_label, font_size=params.font_size, position_on_path=0.8, mode=b.Mode.PRIVATE)
-                b.add(text.move(b.Location((0, -params.font_size*0.12, 0))))
+                text = b.Text(with_label, font_size=PARAMS.font_size,
+                              position_on_path=0.8, mode=b.Mode.PRIVATE)
+                b.add(text.move(b.Location((0, -PARAMS.font_size*0.12, 0))))
 
             b.extrude(amount=0.3)
 
-
     return p
 
+
 def rail_sketch(rail_length: float, with_label: str | None = None) -> list[b.BuildSketch]:
+    """
+    Creates the sketches for the rail part (cut and engrave).
+    """
     with b.BuildSketch() as cut:
-        b.Rectangle(rail_length, params.rail_width)
+        b.Rectangle(rail_length, PARAMS.rail_width)
         with b.Locations(
-            (-rail_length / 2 + params.rail_slot_depth / 2, 0, 0),
-            (rail_length / 2 - params.rail_slot_depth / 2, 0, 0)
+            (-rail_length / 2 + PARAMS.rail_slot_depth / 2, 0, 0),
+            (rail_length / 2 - PARAMS.rail_slot_depth / 2, 0, 0)
         ):
-            b.Circle(params.bolt_hole_diameter / 2, mode=b.Mode.SUBTRACT)
+            b.Circle(PARAMS.bolt_hole_diameter / 2, mode=b.Mode.SUBTRACT)
 
     with b.BuildSketch() as engrave:
         if with_label is not None:
-            b.Text("TR1", font_size=params.font_size)
+            b.Text(with_label, font_size=PARAMS.font_size)
 
     return [cut, engrave]
 
+
 def rail_part(rail_length: float, with_label: str | None = None) -> b.BuildPart:
+    """
+    Creates the 3D model for the rail.
+    """
     with b.BuildPart() as p:
         cut, engrave = rail_sketch(rail_length, with_label)
-        b.extrude(cut.sketch, amount=params.plywood_thickness)
+        b.extrude(cut.sketch, amount=PARAMS.plywood_thickness)
 
         if with_label is not None:
-            b.extrude(engrave.sketch.move(b.Location((0, 0, params.plywood_thickness))), amount=-0.2, mode=b.Mode.SUBTRACT)
+            b.extrude(engrave.sketch.move(
+                b.Location((0, 0, PARAMS.plywood_thickness))),
+                amount=-0.2, mode=b.Mode.SUBTRACT)
 
     return p
 
@@ -127,28 +156,30 @@ def shelf_joiner_a1() -> b.BuildPart:
     Creates the model for the rear end caps that hold the shelves together.
     """
     with b.BuildPart() as p:
-        b.add(basic_bracket(params.rail_width))
+        b.add(basic_bracket(PARAMS.rail_width))
 
     return p
 
 
-test_bracket = basic_bracket(params.rail_width, "TB2")
+if __name__ == "__main__":
+    PARAMS.check()
+    test_bracket = basic_bracket(PARAMS.rail_width, "TB2")
 
-test_rail_length = 100
+    test_rail_length = 100
 
-rail = rail_part(test_rail_length, "TR1")
-rail.part.move(b.Location((-0*test_rail_length + params.rail_slot_depth / 2, 0, params.shell_thickness)))
+    rail = rail_part(test_rail_length, "TR1")
+    rail_moved = rail.part.move(b.Location((PARAMS.rail_slot_depth / 2, 0, PARAMS.shell_thickness)))  # type: ignore[union-attr]
 
-show([test_bracket, rail])
+    show([test_bracket, rail_moved])
 
-sketch_exporter = b.ExportDXF(unit=b.Unit.MM)
-sketch_exporter.add_layer("Engrave", color=b.ColorIndex.BLUE)
-sketch_exporter.add_layer("Cut", color=b.ColorIndex.RED)
+    sketch_exporter = b.ExportDXF(unit=b.Unit.MM)
+    sketch_exporter.add_layer("Engrave", color=b.ColorIndex.BLUE)
+    sketch_exporter.add_layer("Cut", color=b.ColorIndex.RED)
 
-rail_sketch = rail_sketch(test_rail_length, "TR1")
-sketch_exporter.add_shape(rail_sketch[0].sketch, layer="Cut")
-sketch_exporter.add_shape(rail_sketch[1].sketch, layer="Engrave")
+    rail_sketches = rail_sketch(test_rail_length, "TR1")
+    sketch_exporter.add_shape(rail_sketches[0].sketch, layer="Cut")
+    sketch_exporter.add_shape(rail_sketches[1].sketch, layer="Engrave")
 
-sketch_exporter.write("test_rail_1.dxf")
+    sketch_exporter.write("test_rail_1.dxf")
 
-b.export_stl(test_bracket.part, 'test_bracket.stl')
+    b.export_stl(test_bracket.part, 'test_bracket.stl')  # type: ignore[arg-type]
