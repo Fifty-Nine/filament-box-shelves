@@ -158,7 +158,7 @@ def universal_bracket(square_rail_width: float,
 
     with b.BuildPart() as p:
         locs = b.PolarLocations(
-            radius=square_bracket_length,
+            radius=square_bracket_length / 2 + PARAMS.rail_slot_depth / 2,
             count=4,
         )
 
@@ -172,7 +172,7 @@ def universal_bracket(square_rail_width: float,
 
         text: b.Text | None = None
         with b.BuildSketch():
-            b.Circle(square_bracket_length / 2 + PARAMS.rail_slot_depth / 2)
+            b.Rectangle(square_bracket_length, square_bracket_length)
             if with_label is not None:
                 text = b.Text(with_label, font_size=PARAMS.font_size,
                               position_on_path=0.8, mode=b.Mode.PRIVATE)
