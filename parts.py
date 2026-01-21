@@ -184,8 +184,15 @@ def main(show_preview: bool, output_dir: Path | None):
     test_rail_length = 100
 
     rail = rail_part(test_rail_length, "TR2")
+
+    bracket_face = test_bracket.faces().sort_by(b.Axis.X)[-1]
+    rail_face = rail.faces().sort_by(b.Axis.X)[-1]
+
     rail_moved = rail.part.move(  # type: ignore[union-attr]
-        b.Location((PARAMS.rail_slot_depth / 2, 0, PARAMS.shell_thickness))
+        b.Location((
+            bracket_face.center().X - rail_face.center().X,
+            0,
+            PARAMS.shell_thickness))
     )
 
     if show_preview:
