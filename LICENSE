@@ -1,0 +1,88 @@
+CERN Open Hardware Licence Version 2 - Strongly Reciprocal
+
+Preamble
+
+CERN has developed this Licence to promote collaboration among hardware designers and to provide a legal tool which supports the freedom to use, study, modify, share and distribute hardware designs and products based on those designs.
+
+The user of this Licence may be a natural person or a legal entity. The specific terms and conditions of this Licence are defined below.
+
+1. Definitions
+
+1.1 'Licence' means this CERN Open Hardware Licence Version 2 - Strongly Reciprocal.
+
+1.2 'Licensor' means any natural person or legal entity which creates or modifies a design and distributes that design under the terms and conditions of this Licence.
+
+1.3 'Licensee' means any natural person or legal entity exercising any of the rights granted by this Licence.
+
+1.4 'Source' means information (including but not limited to software, setup files, hardware description languages, netlists, schematics, board layout files, mechanical drawings and bill of materials) used to create, manufacture or test a Product.
+
+1.5 'Product' means any device, component, or physical object, whether in its final or an intermediate state, which is created, manufactured or tested by using Source.
+
+1.6 'Available Component' means any physical object, material, component or device which is generally available as a standard part or which is available under a licence which grants the Licensee the rights to make and sell the object, material, component or device.
+
+1.7 'Make' means to create or manufacture a Product.
+
+1.8 'Modify' means to create Source which is derived from the Source covered by this Licence.
+
+1.9 'Covered Source' means Source covered by this Licence.
+
+1.10 'Complete Source' means the set of Source necessary to Make a Product, in the preferred form for making modifications, including all necessary design information, but excluding Available Components.
+
+2. Applicability
+
+2.1 This Licence governs the use, copying, modification and distribution of the Covered Source, and the manufacture and distribution of Products.
+
+2.2 This Licence extends to any Source used to Make a Product, with the exception of Available Components.
+
+3. Copying, Modification and Distribution of Source
+
+3.1 The Licensee may copy, modify and distribute Covered Source, subject to the conditions of this Licence.
+
+3.2 The Licensee may modify Covered Source. If the Licensee modifies Covered Source, the modified Source becomes Covered Source and must be distributed under the terms and conditions of this Licence.
+
+3.3 The Licensee may distribute Covered Source or modified Covered Source, provided that the Licensee:
+    a) includes a copy of this Licence;
+    b) includes a prominent notice stating that the Source is licensed under this Licence;
+    c) maintains all notices referring to this Licence and to the disclaimer of warranties; and
+    d) ensures that any modified Covered Source carries prominent notices stating that the Licensee has modified the Source, with the date and description of the modifications.
+
+4. Manufacture and Distribution of Products
+
+4.1 The Licensee may Make and distribute Products, provided that the Licensee:
+    a) ensures that the recipient of the Product has access to the Complete Source;
+    b) ensures that the Complete Source is distributed under the terms and conditions of this Licence; and
+    c) ensures that the Product carries a notice stating that the Source is licensed under this Licence, or if this is not possible, that the notice is included in the documentation accompanying the Product.
+
+4.2 The Licensee may not distribute a Product unless the Licensee complies with the obligations of Clause 4.1.
+
+5. Research and Development
+
+5.1 The Licensee may use Covered Source and Make Products for Research and Development purposes.
+
+5.2 The Licensee is not required to distribute Complete Source for Products made solely for Research and Development purposes and not distributed to third parties.
+
+6. DISCLAIMER OF WARRANTIES
+
+6.1 TO THE EXTENT PERMITTED BY APPLICABLE LAW, THE LICENSOR PROVIDES THE COVERED SOURCE "AS IS" AND WITHOUT ANY WARRANTY OF ANY KIND, EITHER EXPRESS, IMPLIED, OR STATUTORY, INCLUDING, BUT NOT LIMITED TO, ANY WARRANTY THAT THE COVERED SOURCE IS FREE FROM DEFECTS, MERCHANTABLE, FIT FOR A PARTICULAR PURPOSE OR NON-INFRINGING. THE ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE OF THE COVERED SOURCE AND THE PRODUCTS IS WITH THE LICENSEE. SHOULD THE COVERED SOURCE OR THE PRODUCTS PROVE DEFECTIVE IN ANY RESPECT, THE LICENSEE (NOT THE LICENSOR) ASSUMES THE COST OF ANY NECESSARY SERVICING, REPAIR OR CORRECTION.
+
+7. LIMITATION OF LIABILITY
+
+7.1 TO THE EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT UNLESS REQUIRED BY APPLICABLE LAW OR AGREED TO IN WRITING WILL THE LICENSOR BE LIABLE TO THE LICENSEE FOR DAMAGES, INCLUDING ANY GENERAL, SPECIAL, INCIDENTAL OR CONSEQUENTIAL DAMAGES ARISING OUT OF THE USE OR INABILITY TO USE THE COVERED SOURCE OR THE PRODUCTS (INCLUDING BUT NOT LIMITED TO LOSS OF DATA OR DATA BEING RENDERED INACCURATE OR LOSSES SUSTAINED BY THE LICENSEE OR THIRD PARTIES OR A FAILURE OF THE COVERED SOURCE OR THE PRODUCTS TO OPERATE WITH ANY OTHER SOURCE OR PRODUCTS), EVEN IF THE LICENSOR HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+
+8. Termination
+
+8.1 This Licence shall remain in force as long as the Licensee complies with its terms and conditions.
+
+8.2 If the Licensee fails to comply with any term or condition of this Licence, the rights granted to the Licensee under this Licence shall terminate automatically.
+
+8.3 Upon termination of this Licence, the Licensee shall cease all use, copying, modification and distribution of Covered Source and Products.
+
+8.4 Termination of this Licence shall not affect the rights of any third party who has received Covered Source or Products from the Licensee in accordance with this Licence.
+
+9. General
+
+9.1 This Licence shall be governed by the laws of the jurisdiction in which the Licensor resides.
+
+9.2 This Licence constitutes the entire agreement between the parties with respect to the subject matter hereof.
+
+9.3 If any provision of this Licence is held to be invalid or unenforceable, that provision shall be construed, limited or eliminated to the minimum extent necessary to make it valid and enforceable, and the remaining provisions of this Licence shall remain in full force and effect.
