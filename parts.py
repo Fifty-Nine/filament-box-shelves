@@ -37,7 +37,7 @@ class DesignParameters:
     bolt_hole_diameter: float = 4.5
     shell_thickness: float = 5
     rail_slot_depth: float = 25
-    tolerance: float = 0.2
+    tolerance: float = 0.12
     min_thickness: float = 0.5
     font_size: float = 7
     laser_kerf: float = 0.1
