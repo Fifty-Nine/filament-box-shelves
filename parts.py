@@ -18,6 +18,11 @@ __all__ = [
     "shelf_joiner_a1",
 ]
 
+# ##### Part ID codes ######
+# TB - Test Bracket
+# TR - Test Rail
+# UB - Universal bracket (rear)
+
 
 @dataclass
 class BoxDimensions:
@@ -119,6 +124,47 @@ def basic_bracket(slat_width: float, with_label: str | None = None) -> b.BuildPa
     return p
 
 
+def get_bracket_length(bracket: b.BuildPart) -> float:
+    """
+    Calculates the width of the bracket connection across its mating width.
+    """
+    edges = bracket.faces().sort_by(b.Axis.X)[-1].edges()
+    return edges.sort_by(b.SortBy.LENGTH)[-1].length
+
+
+def universal_bracket(square_rail_width: float,
+                      crossbar_width: float,  # pylint: disable=unused-argument
+                      crossbar_angle: float,  # pylint: disable=unused-argument
+                      with_label: str | None = None) -> b.BuildPart:
+    """
+    Creates a universal bracket for the rear end of the shelves.
+    """
+    square_bracket_template = basic_bracket(square_rail_width)
+    square_bracket_length = get_bracket_length(square_bracket_template)
+
+    with b.BuildPart() as p:
+        with b.PolarLocations(
+            radius=square_bracket_length,
+            count=4
+        ):
+            b.add(square_bracket_template)
+
+        text: b.Text | None = None
+        with b.BuildSketch():
+            b.Circle(square_bracket_length / 2 + PARAMS.rail_slot_depth / 2)
+            if with_label is not None:
+                text = b.Text(with_label, font_size=PARAMS.font_size,
+                              position_on_path=0.8, mode=b.Mode.PRIVATE)
+                text = text.move(b.Location((0, -PARAMS.font_size*0.12, 0)))
+
+        b.extrude(amount=PARAMS.shell_thickness)
+
+        if text is not None:
+            b.extrude(text, amount=PARAMS.text_depth + PARAMS.shell_thickness)
+
+    return p
+
+
 def rail_sketch(rail_length: float, with_label: str | None = None) -> list[b.BuildSketch]:
     """
     Creates the sketches for the rail part (cut and engrave).
@@ -182,22 +228,44 @@ def main(show_preview: bool, output_dir: Path | None):
     PARAMS.check()
     test_bracket = basic_bracket(PARAMS.rail_width, "TB2")
 
+    ub = universal_bracket(PARAMS.rail_width, PARAMS.crossbar_width, PARAMS.cant_angle, "UB1")
+
     test_rail_length = 100
 
     rail = rail_part(test_rail_length, "TR2")
 
-    bracket_face = test_bracket.faces().sort_by(b.Axis.X)[-1]
-    rail_face = rail.faces().sort_by(b.Axis.X)[-1]
+    rightmost_bracket_face = test_bracket.faces().sort_by(b.Axis.X)[-1]
+    rightmost_rail_face = rail.faces().sort_by(b.Axis.X)[-1]
+    leftmost_rail_face = rail.faces().sort_by(b.Axis.X)[0]
+    rightmost_ub_face = ub.faces().sort_by(b.Axis.X)[-1]
 
-    rail_moved = rail.part.move(  # type: ignore[union-attr]
-        b.Location((
-            bracket_face.center().X - rail_face.center().X,
-            0,
-            PARAMS.shell_thickness))
+    # Translation needed to align the right bracket face with the right rail face
+    rail_dx = rightmost_bracket_face.center().X - rightmost_rail_face.center().X
+
+    # Translation needed to align the left rail face with the right rail face
+    ub_dx = leftmost_rail_face.center().X - rightmost_ub_face.center().X
+
+    # Plus the additional translation needed to align the mounting holes
+    ub_dx += PARAMS.rail_slot_depth
+
+    # Align the rail with the first bracket
+    rail.part.move(  # type: ignore[union-attr]
+        b.Location((rail_dx, 0, PARAMS.shell_thickness))
+    )
+
+    # Move the second bracket to preserve the original arrangement relative
+    # to the rail
+    ub.part.move(  # type: ignore[union-attr]
+        b.Location((rail_dx, 0, 0))
+    )
+
+    # Now align the second bracket to the left side of the hole.
+    ub.part.move(  # type: ignore[union-attr]
+        b.Location((ub_dx, 0, 0))
     )
 
     if show_preview:
-        show(test_bracket, rail_moved, colors=ColorMap.set2())
+        show(test_bracket, rail, ub, colors=ColorMap.set2())
 
     if output_dir:
         # Ensure output directory exists
