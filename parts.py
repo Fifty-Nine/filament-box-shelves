@@ -18,7 +18,8 @@ __all__ = [
 ]
 
 # ##### Part ID codes ######
-# TB - Test Bracket
+# TBC - Test Bracket with slot colinear with joining axis
+# TB - Test Bracket with slot perpendicular to joining axis
 # TR - Test Rail
 # UB - Universal bracket (rear)
 
@@ -78,7 +79,7 @@ def hex_nut() -> b.BuildPart:
     return copy.copy(_NUT_TEMPLATE)
 
 
-def basic_bracket(slat_width: float, with_label: str | None = None) -> b.BuildPart:
+def basic_bracket(slat_width: float, perpendicular_slot: bool = False, with_label: str | None = None) -> b.BuildPart:
     """
     Creates a mounting bracket for mating plywood slats to a 3D printed part.
     """
@@ -89,13 +90,25 @@ def basic_bracket(slat_width: float, with_label: str | None = None) -> b.BuildPa
                             slat_width)
         captive_nut = b.RegularPolygon(
             PARAMS.nut_radius / 2 + PARAMS.tolerance, 6
-        ).rotate(b.Axis.Z, 90)
+        )
 
     captive_nut_points = captive_nut.vertices()
-    y_nut_min = captive_nut_points.sort_by(b.Axis.Y)[0].Y
-    nut_points_x = captive_nut_points.sort_by(b.Axis.X)
-    nut_slot_width = nut_points_x[-1].X - nut_points_x[0].X
-    nut_slot_plane = b.Plane.XZ.offset(-y_nut_min)
+
+    # Pylint fails to properly track the types for the selectors.
+    # pylint: disable=no-member
+    if perpendicular_slot:
+        y_nut_min = captive_nut_points.sort_by(b.Axis.Y)[0].Y
+        nut_points_x = captive_nut_points.sort_by(b.Axis.X)
+        nut_slot_width = nut_points_x[-1].X - nut_points_x[0].X
+        nut_slot_plane = b.Plane.XZ.offset(-y_nut_min)
+        extrude_dir = (0, 1, 0)
+    else:
+        x_nut_min = captive_nut_points.sort_by(b.Axis.X)[0].X
+        nut_points_y = captive_nut_points.sort_by(b.Axis.Y)
+        nut_slot_width = nut_points_y[-1].Y - nut_points_y[0].Y
+        nut_slot_plane = b.Plane.YZ.offset(x_nut_min)
+        extrude_dir = (1, 0, 0)
+    # pylint: enable=no-member
 
     with b.BuildPart() as p:
         b.extrude(inner, PARAMS.shell_thickness)
@@ -108,7 +121,8 @@ def basic_bracket(slat_width: float, with_label: str | None = None) -> b.BuildPa
                 b.Rectangle(nut_slot_width, PARAMS.nut_height)
                 b.offset(amount=PARAMS.tolerance, kind=b.Kind.INTERSECTION)
 
-        b.extrude(amount=PARAMS.rail_slot_depth, dir=(0, 1, 0), mode=b.Mode.SUBTRACT)
+        b.extrude(amount=PARAMS.rail_slot_depth, dir=extrude_dir, mode=b.Mode.SUBTRACT)
+
         b.RigidJoint(label="bolt_hole", joint_location=b.Location((0, 0, PARAMS.shell_thickness)))
 
         if with_label is not None:
@@ -232,25 +246,26 @@ def main(show_preview: bool, output_dir: Path | None):
     Main entry point for generating and previewing parts.
     """
     PARAMS.check()
-    test_bracket = basic_bracket(PARAMS.rail_width, "TB2")
-
-    ub = universal_bracket(PARAMS.rail_width, PARAMS.crossbar_width, PARAMS.cant_angle, "UB1")
-
     test_rail_length = 100
-
+    tb = basic_bracket(PARAMS.rail_width, perpendicular_slot=True, with_label="TB3")
+    tbc = basic_bracket(PARAMS.rail_width, perpendicular_slot=False, with_label="TBC1")
+    ub = universal_bracket(PARAMS.rail_width, PARAMS.crossbar_width, PARAMS.cant_angle, "UB1")
     rail = rail_part(test_rail_length, "TR2")
 
-    assert (test_bracket.part is not None
+    assert (tb.part is not None
+            and tbc.part is not None
             and ub.part is not None
             and rail.part is not None)
 
     ub.part.joints["bolt_hole_0"].connect_to(rail.part.joints["left_bolt"])
-    rail.part.joints["right_bolt"].connect_to(test_bracket.joints["bolt_hole"])
+    rail.part.joints["right_bolt"].connect_to(tb.joints["bolt_hole"])
 
-    assembly = b.Compound([test_bracket.part, rail.part, ub.part])
+    assembly = b.Compound([tb.part, rail.part, ub.part])
+
+    arranged_parts = b.pack([assembly, tbc.part], padding=5, align_z=True)
 
     if show_preview:
-        show(assembly, colors=ColorMap.set2())
+        show(arranged_parts, colors=ColorMap.set2())
 
     if output_dir:
         # Ensure output directory exists
@@ -266,7 +281,8 @@ def main(show_preview: bool, output_dir: Path | None):
 
         sketch_exporter.write(str(output_dir / "test_rail_1.dxf"))
 
-        b.export_stl(test_bracket.part, str(output_dir / "test_bracket.stl"))  # type: ignore[arg-type]
+        b.export_stl(tb.part, str(output_dir / "test_bracket_perpendicular.stl"))  # type: ignore[arg-type]
+        b.export_stl(tbc.part, str(output_dir / "test_bracket_collinear.stl"))  # type: ignore[arg-type]
 
 
 if __name__ == "__main__":
