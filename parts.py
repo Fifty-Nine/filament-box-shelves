@@ -1,6 +1,7 @@
 "CAD logic to create parts for my modular shelving project"
 from dataclasses import dataclass
 import copy
+from pathlib import Path
 from ocp_vscode import show
 import build123d as b
 
@@ -168,9 +169,15 @@ if __name__ == "__main__":
     test_rail_length = 100
 
     rail = rail_part(test_rail_length, "TR1")
-    rail_moved = rail.part.move(b.Location((PARAMS.rail_slot_depth / 2, 0, PARAMS.shell_thickness)))  # type: ignore[union-attr]
+    rail_moved = rail.part.move(  # type: ignore[union-attr]
+        b.Location((PARAMS.rail_slot_depth / 2, 0, PARAMS.shell_thickness))
+    )
 
     show([test_bracket, rail_moved])
+
+    # Ensure output directory exists
+    output_dir = Path("output")
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     sketch_exporter = b.ExportDXF(unit=b.Unit.MM)
     sketch_exporter.add_layer("Engrave", color=b.ColorIndex.BLUE)
@@ -180,6 +187,6 @@ if __name__ == "__main__":
     sketch_exporter.add_shape(rail_sketches[0].sketch, layer="Cut")
     sketch_exporter.add_shape(rail_sketches[1].sketch, layer="Engrave")
 
-    sketch_exporter.write("test_rail_1.dxf")
+    sketch_exporter.write(str(output_dir / "test_rail_1.dxf"))
 
-    b.export_stl(test_bracket.part, 'test_bracket.stl')  # type: ignore[arg-type]
+    b.export_stl(test_bracket.part, str(output_dir / "test_bracket.stl"))  # type: ignore[arg-type]
