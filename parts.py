@@ -94,8 +94,8 @@ def basic_bracket(slat_width: float, with_label: str | None = None) -> b.BuildPa
 
     with b.BuildPart() as p:
         b.extrude(inner, PARAMS.shell_thickness)
-        b.extrude((outer - inner),
-                  PARAMS.shell_thickness + PARAMS.plywood_thickness)
+        b.extrude((outer - inner),  # pyright: ignore[reportArgumentType]
+                  amount=PARAMS.shell_thickness + PARAMS.plywood_thickness)
         b.Hole(PARAMS.bolt_hole_diameter / 2)
 
         with b.BuildSketch(nut_slot_plane):
