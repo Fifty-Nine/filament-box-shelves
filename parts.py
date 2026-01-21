@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import copy
 from pathlib import Path
 import click
-from ocp_vscode import show
+from ocp_vscode import show, ColorMap
 import build123d as b
 
 __all__ = [
@@ -189,7 +189,7 @@ def main(show_preview: bool, output_dir: Path | None):
     )
 
     if show_preview:
-        show([test_bracket, rail_moved])
+        show(test_bracket, rail_moved, colors=ColorMap.set2())
 
     if output_dir:
         # Ensure output directory exists
