@@ -130,6 +130,8 @@ def rail_sketch(rail_length: float, with_label: str | None = None) -> list[b.Bui
         ):
             b.Circle(PARAMS.bolt_hole_diameter / 2, mode=b.Mode.SUBTRACT)
 
+        b.offset(amount=PARAMS.laser_kerf, kind=b.Kind.INTERSECTION)
+
     with b.BuildSketch() as engrave:
         if with_label is not None:
             b.Text(with_label, font_size=PARAMS.font_size)
@@ -181,7 +183,7 @@ def main(show_preview: bool, output_dir: Path | None):
 
     test_rail_length = 100
 
-    rail = rail_part(test_rail_length, "TR1")
+    rail = rail_part(test_rail_length, "TR2")
     rail_moved = rail.part.move(  # type: ignore[union-attr]
         b.Location((PARAMS.rail_slot_depth / 2, 0, PARAMS.shell_thickness))
     )
