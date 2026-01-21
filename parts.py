@@ -43,6 +43,7 @@ class DesignParameters:
     min_thickness: float = 0.5
     font_size: float = 7
     laser_kerf: float = 0.1
+    text_depth: float = 0.3
 
     def check(self):
         """Checks if parameters are valid."""
@@ -113,7 +114,7 @@ def basic_bracket(slat_width: float, with_label: str | None = None) -> b.BuildPa
                               position_on_path=0.8, mode=b.Mode.PRIVATE)
                 b.add(text.move(b.Location((0, -PARAMS.font_size*0.12, 0))))
 
-            b.extrude(amount=0.3)
+            b.extrude(amount=PARAMS.text_depth)
 
     return p
 
