@@ -2,6 +2,7 @@
 from dataclasses import dataclass
 import copy
 from pathlib import Path
+import click
 from ocp_vscode import show
 import build123d as b
 
@@ -162,7 +163,19 @@ def shelf_joiner_a1() -> b.BuildPart:
     return p
 
 
-if __name__ == "__main__":
+@click.command()
+@click.option("--show/--no-show", "show_preview", default=True, help="Show the model in ocp_vscode.")
+@click.option(
+    "--output",
+    "-o",
+    "output_dir",
+    type=click.Path(file_okay=False, dir_okay=True, path_type=Path),
+    help="Output directory for artifacts.",
+)
+def main(show_preview: bool, output_dir: Path | None):
+    """
+    Main entry point for generating and previewing parts.
+    """
     PARAMS.check()
     test_bracket = basic_bracket(PARAMS.rail_width, "TB2")
 
@@ -173,20 +186,25 @@ if __name__ == "__main__":
         b.Location((PARAMS.rail_slot_depth / 2, 0, PARAMS.shell_thickness))
     )
 
-    show([test_bracket, rail_moved])
+    if show_preview:
+        show([test_bracket, rail_moved])
 
-    # Ensure output directory exists
-    output_dir = Path("output")
-    output_dir.mkdir(parents=True, exist_ok=True)
+    if output_dir:
+        # Ensure output directory exists
+        output_dir.mkdir(parents=True, exist_ok=True)
 
-    sketch_exporter = b.ExportDXF(unit=b.Unit.MM)
-    sketch_exporter.add_layer("Engrave", color=b.ColorIndex.BLUE)
-    sketch_exporter.add_layer("Cut", color=b.ColorIndex.RED)
+        sketch_exporter = b.ExportDXF(unit=b.Unit.MM)
+        sketch_exporter.add_layer("Engrave", color=b.ColorIndex.BLUE)
+        sketch_exporter.add_layer("Cut", color=b.ColorIndex.RED)
 
-    rail_sketches = rail_sketch(test_rail_length, "TR1")
-    sketch_exporter.add_shape(rail_sketches[0].sketch, layer="Cut")
-    sketch_exporter.add_shape(rail_sketches[1].sketch, layer="Engrave")
+        rail_sketches = rail_sketch(test_rail_length, "TR1")
+        sketch_exporter.add_shape(rail_sketches[0].sketch, layer="Cut")
+        sketch_exporter.add_shape(rail_sketches[1].sketch, layer="Engrave")
 
-    sketch_exporter.write(str(output_dir / "test_rail_1.dxf"))
+        sketch_exporter.write(str(output_dir / "test_rail_1.dxf"))
 
-    b.export_stl(test_bracket.part, str(output_dir / "test_bracket.stl"))  # type: ignore[arg-type]
+        b.export_stl(test_bracket.part, str(output_dir / "test_bracket.stl"))  # type: ignore[arg-type]
+
+
+if __name__ == "__main__":
+    main()  # pylint: disable=no-value-for-parameter
