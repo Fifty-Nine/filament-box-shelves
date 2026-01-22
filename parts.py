@@ -28,8 +28,17 @@ __all__ = [
 class BoxDimensions:
     """Dimensions of the box to be shelved."""
     width: float = 224
-    length: float = 206
+    depth: float = 206
     height: float = 73
+
+
+@dataclass
+class ShelfDimensions:
+    """ Dimensions of a single shelf that holds a box."""
+    padding: float = 5
+    width: float = BoxDimensions.width + 2 * padding
+    depth: float = BoxDimensions.depth
+    height: float = BoxDimensions.height + 2 * padding
 
 
 @dataclass
@@ -57,6 +66,7 @@ class DesignParameters:
 
 
 BOX_DIMS = BoxDimensions()
+SHELF_DIMS = ShelfDimensions()
 PARAMS = DesignParameters()
 
 _NUT_TEMPLATE: b.BuildPart | None = None
@@ -246,10 +256,12 @@ def main(show_preview: bool, output_dir: Path | None):
     Main entry point for generating and previewing parts.
     """
     PARAMS.check()
-    test_rail_length = 100
     tb = basic_bracket(PARAMS.rail_width, perpendicular_slot=True, with_label="TB3")
     tbc = basic_bracket(PARAMS.rail_width, perpendicular_slot=False, with_label="TBC1")
     ub = universal_bracket(PARAMS.rail_width, PARAMS.crossbar_width, PARAMS.cant_angle, "UB1")
+
+    test_rail_length = SHELF_DIMS.width - 2 * (ub.vertices().sort_by(b.Axis.X)[-1].X - PARAMS.rail_slot_depth)
+
     rail = rail_part(test_rail_length, "TR2")
 
     assert (tb.part is not None
