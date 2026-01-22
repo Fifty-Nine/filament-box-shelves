@@ -28,6 +28,11 @@ max-line-length = 120
 [tool.pylint."MESSAGES CONTROL"]
 disable = ["R0902", "R0914", "W0603", "C0103"]
 
+[tool.pylint."TYPECHECK"]
+generated-members = [
+    "build123d.topology.shape_core.ShapeList.*",
+]
+
 [tool.mypy]
 python_version = "3.10"
 ignore_missing_imports = true
