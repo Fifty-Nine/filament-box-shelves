@@ -127,16 +127,17 @@ def build_slot_cutter(nut: b.RegularPolygon,
 
     min_pt = points[0].center()
     flat_pts: list[b.Vector] = [pt.center() for pt in points[1:3].sort_by(third_axis)]
-    workplane = b.Plane(up_axis, slot_axis_unit)
+    workplane = b.Plane(x_dir=slot_axis_unit, axis=up_axis)
 
-    # The nut flats extend deeper into the slot than the center of the nut, so
-    # we need to compute how far that is relative to the slot axis and add it to
-    # our distance. Because it's a regular hexagon, the side length is actually just
-    # the radius, so the distance from the origin to the extent of the flats is D / 2 / 2
-    # We add the tolerance to ensure we punch through the shell of the part.
+    # The cutter's profile is defined by the nut's rearmost vertex and two adjacent vertices.
+    # The distance from the nut's center to the plane containing these adjacent vertices,
+    # along the slot axis, is half the nut's side length. For a regular hexagon,
+    # the side length (s) equals the circumradius (r), which is half the circumdiameter (D).
+    # Thus, this additional distance (d) is: d = s / 2 = r / 2 = (D / 2) / 2 = D / 4.
+    # This `D / 4` is added to `nut_center_depth` (distance from origin to wall)
+    # to determine the total depth for the cutter.
     nut_flats_depth = (nut_center_depth
-                       + PARAMS.nut_circumdiameter / 4
-                       + PARAMS.tolerance * 2)
+                       + PARAMS.nut_circumdiameter / 4)
 
     with b.BuildPart() as cutter:
         with b.BuildSketch(workplane) as profile:
@@ -171,7 +172,7 @@ def basic_bracket(slat_width: float,
         inner = b.Rectangle(PARAMS.rail_slot_depth,
                             slat_width)
         captive_nut = b.RegularPolygon(
-            PARAMS.nut_circumdiameter / 2 + PARAMS.tolerance, 6
+            PARAMS.nut_circumdiameter / 2, 6
         ).rotate(b.Axis.Z, 90 if perpendicular_slot else 0)
 
     if not rear_nut:
