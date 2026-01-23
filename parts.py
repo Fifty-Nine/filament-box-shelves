@@ -22,6 +22,7 @@ __all__ = [
 # ##### Part ID codes ######
 # TBC - Test Bracket with slot colinear with joining axis
 # TB - Test Bracket with slot perpendicular to joining axis
+# TBR - Test bracket with rear-embedded hex nut.
 # TR - Test Rail
 # UB - Universal bracket (rear)
 
@@ -157,7 +158,10 @@ def build_slot_cutter(nut: b.RegularPolygon,
     return nn(cutter.part)
 
 
-def basic_bracket(slat_width: float, perpendicular_slot: bool = False, with_label: str | None = None) -> b.BuildPart:
+def basic_bracket(slat_width: float,
+                  perpendicular_slot: bool = False,
+                  rear_nut: bool = False,
+                  with_label: str | None = None) -> b.BuildPart:
     """
     Creates a mounting bracket for mating plywood slats to a 3D printed part.
     """
@@ -170,16 +174,21 @@ def basic_bracket(slat_width: float, perpendicular_slot: bool = False, with_labe
             PARAMS.nut_circumdiameter / 2 + PARAMS.tolerance, 6
         ).rotate(b.Axis.Z, 90 if perpendicular_slot else 0)
 
-    slot_dir = (0, 1, 0) if perpendicular_slot else (1, 0, 0)
-    up_dir = (0, 0, 1)
+    if not rear_nut:
+        slot_dir = (0, 1, 0) if perpendicular_slot else (1, 0, 0)
+        up_dir = (0, 0, 1)
 
-    slot_cutter = build_slot_cutter(captive_nut,
-                                    slot_dir,
-                                    up_dir,
-                                    (slat_width / 2 + PARAMS.shell_thickness
-                                     if perpendicular_slot else PARAMS.rail_slot_depth / 2))
+        slot_cutter = build_slot_cutter(captive_nut,
+                                        slot_dir,
+                                        up_dir,
+                                        (slat_width / 2 + PARAMS.shell_thickness
+                                         if perpendicular_slot else PARAMS.rail_slot_depth / 2))
 
-    cutter_position = (0, 0, PARAMS.shell_thickness / 2)
+        cutter_position = (0, 0, PARAMS.shell_thickness / 2)
+
+    else:
+        slot_cutter = nn(hex_nut().part)
+        cutter_position = (0, 0, 0)
 
     slot_cutter = b.offset(slot_cutter, PARAMS.tolerance)
 
@@ -425,6 +434,7 @@ def main(show_preview: bool, output_dir: Path | None):
     PARAMS.check()
     tb = basic_bracket(PARAMS.rail_width, perpendicular_slot=True, with_label="TB3")
     tbc = basic_bracket(PARAMS.rail_width, perpendicular_slot=False, with_label="TBC1")
+    tbr = basic_bracket(PARAMS.rail_width, rear_nut=True, with_label="TBR1")
     ub = universal_bracket(SHELF_DIMS.width, SHELF_DIMS.height, PARAMS.rail_width, PARAMS.crossbar_width, "UB1")
     ux = universal_bracket(SHELF_DIMS.height, SHELF_DIMS.width, PARAMS.rail_width, PARAMS.crossbar_width, "UX1")
     u45 = universal_bracket(SHELF_DIMS.width, SHELF_DIMS.width, PARAMS.rail_width, PARAMS.crossbar_width, "U45")
@@ -434,6 +444,7 @@ def main(show_preview: bool, output_dir: Path | None):
 
     assert (tb.part is not None
             and tbc.part is not None
+            and tbr.part is not None
             and ub.part is not None
             and rail.part is not None
             and ux.part is not None
@@ -444,7 +455,7 @@ def main(show_preview: bool, output_dir: Path | None):
 
     assembly = b.Compound([tb.part, rail.part, ub.part])
 
-    arranged_parts = b.pack([assembly, tbc.part, ux.part, u45.part], padding=5, align_z=True)
+    arranged_parts = b.pack([assembly, tbc.part, tbr.part, ux.part, u45.part], padding=5, align_z=True)
 
     if show_preview:
         show(*b.Compound(arranged_parts).solids(), colors=ColorMap.set2())
