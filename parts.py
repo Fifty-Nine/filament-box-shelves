@@ -109,6 +109,54 @@ def hex_nut() -> b.BuildPart:
     return copy.copy(_NUT_TEMPLATE)
 
 
+def build_slot_cutter(nut: b.RegularPolygon,
+                      slot_axis_unit: b.VectorLike,
+                      up_axis_unit: b.VectorLike,
+                      nut_center_depth: float) -> b.Part:
+    """Builds a cutter for a hex nut slot."""
+    slot_axis_unit = b.Vector(*slot_axis_unit)
+    up_axis_unit = b.Vector(*up_axis_unit)
+    third_axis_unit = up_axis_unit.cross(slot_axis_unit)
+
+    slot_axis = b.Axis((0, 0, 0), slot_axis_unit)
+    up_axis = b.Axis((0, 0, 0), up_axis_unit)
+    third_axis = b.Axis((0, 0, 0), third_axis_unit)
+
+    points = nut.vertices().sort_by(slot_axis)
+
+    min_pt = points[0].center()
+    flat_pts: list[b.Vector] = [pt.center() for pt in points[1:3].sort_by(third_axis)]
+    workplane = b.Plane(up_axis, slot_axis_unit)
+
+    # The nut flats extend deeper into the slot than the center of the nut, so
+    # we need to compute how far that is relative to the slot axis and add it to
+    # our distance. Because it's a regular hexagon, the side length is actually just
+    # the radius, so the distance from the origin to the extent of the flats is D / 2 / 2
+    # We add the tolerance to ensure we punch through the shell of the part.
+    nut_flats_depth = (nut_center_depth
+                       + PARAMS.nut_circumdiameter / 4
+                       + PARAMS.tolerance * 2)
+
+    with b.BuildPart() as cutter:
+        with b.BuildSketch(workplane) as profile:
+            poly_points = cast(list[b.Vector], [
+                workplane.to_local_coords(pt) for pt in (
+                    flat_pts[0], min_pt, flat_pts[1],
+                    flat_pts[1] + (slot_axis_unit * nut_flats_depth),
+                    flat_pts[0] + (slot_axis_unit * nut_flats_depth)
+                )
+            ])
+            with b.Locations(poly_points[1]):
+                b.Polygon(*poly_points, align=(b.Align.MIN, b.Align.CENTER))
+
+        b.extrude(profile.sketch,
+                  amount=PARAMS.nut_height / 2,
+                  dir=up_axis_unit,
+                  both=True)
+
+    return nn(cutter.part)
+
+
 def basic_bracket(slat_width: float, perpendicular_slot: bool = False, with_label: str | None = None) -> b.BuildPart:
     """
     Creates a mounting bracket for mating plywood slats to a 3D printed part.
@@ -120,22 +168,20 @@ def basic_bracket(slat_width: float, perpendicular_slot: bool = False, with_labe
                             slat_width)
         captive_nut = b.RegularPolygon(
             PARAMS.nut_circumdiameter / 2 + PARAMS.tolerance, 6
-        )
+        ).rotate(b.Axis.Z, 90 if perpendicular_slot else 0)
 
-    captive_nut_points = captive_nut.vertices()
+    slot_dir = (0, 1, 0) if perpendicular_slot else (1, 0, 0)
+    up_dir = (0, 0, 1)
 
-    if perpendicular_slot:
-        y_nut_min = captive_nut_points.sort_by(b.Axis.Y)[0].Y
-        nut_points_x = captive_nut_points.sort_by(b.Axis.X)
-        nut_slot_width = nut_points_x[-1].X - nut_points_x[0].X
-        nut_slot_plane = b.Plane.XZ.offset(-y_nut_min)
-        extrude_dir = (0, 1, 0)
-    else:
-        x_nut_min = captive_nut_points.sort_by(b.Axis.X)[0].X
-        nut_points_y = captive_nut_points.sort_by(b.Axis.Y)
-        nut_slot_width = nut_points_y[-1].Y - nut_points_y[0].Y
-        nut_slot_plane = b.Plane.YZ.offset(x_nut_min)
-        extrude_dir = (1, 0, 0)
+    slot_cutter = build_slot_cutter(captive_nut,
+                                    slot_dir,
+                                    up_dir,
+                                    (slat_width / 2 + PARAMS.shell_thickness
+                                     if perpendicular_slot else PARAMS.rail_slot_depth / 2))
+
+    cutter_position = (0, 0, PARAMS.shell_thickness / 2)
+
+    slot_cutter = b.offset(slot_cutter, PARAMS.tolerance)
 
     with b.BuildPart() as p:
         b.extrude(inner, PARAMS.shell_thickness)
@@ -143,13 +189,8 @@ def basic_bracket(slat_width: float, perpendicular_slot: bool = False, with_labe
                   amount=PARAMS.shell_thickness + PARAMS.plywood_thickness)
         b.Hole(PARAMS.bolt_hole_diameter / 2)
 
-        with b.BuildSketch(nut_slot_plane):
-            with b.Locations((0, PARAMS.shell_thickness / 2)):
-                b.Rectangle(nut_slot_width, PARAMS.nut_height)
-                b.offset(amount=PARAMS.tolerance, kind=b.Kind.INTERSECTION)
-
-        b.extrude(amount=PARAMS.rail_slot_depth, dir=extrude_dir, mode=b.Mode.SUBTRACT)
-
+        with b.Locations(b.Location(cutter_position)):
+            b.add(slot_cutter, mode=b.Mode.SUBTRACT)
         b.RigidJoint(label="bolt_hole", joint_location=b.Location((0, 0, PARAMS.shell_thickness)))
 
         if with_label is not None:
