@@ -51,7 +51,7 @@ class DesignParameters:
     rail_width: float = 15
     cant_angle: float = 3
     nut_height: float = 3
-    nut_radius: float = 7.8
+    nut_circumdiameter: float = 7.8
     bolt_hole_diameter: float = 4.5
     shell_thickness: float = 5
     rail_slot_depth: float = 25
@@ -100,7 +100,7 @@ def hex_nut() -> b.BuildPart:
     if _NUT_TEMPLATE is None:
         with b.BuildPart() as p:
             with b.BuildSketch():
-                b.RegularPolygon(PARAMS.nut_radius / 2, 6)
+                b.RegularPolygon(PARAMS.nut_circumdiameter / 2, 6)
                 b.Circle(PARAMS.bolt_hole_diameter / 2, mode=b.Mode.SUBTRACT)
 
             b.extrude(amount=PARAMS.nut_height)
@@ -119,7 +119,7 @@ def basic_bracket(slat_width: float, perpendicular_slot: bool = False, with_labe
         inner = b.Rectangle(PARAMS.rail_slot_depth,
                             slat_width)
         captive_nut = b.RegularPolygon(
-            PARAMS.nut_radius / 2 + PARAMS.tolerance, 6
+            PARAMS.nut_circumdiameter / 2 + PARAMS.tolerance, 6
         )
 
     captive_nut_points = captive_nut.vertices()
