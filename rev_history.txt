@@ -4,14 +4,20 @@ been manufactured.
 TB:
 1) initial revision
 2) adjusted slot to match width across flats
-3*) adjusted logic to allow different slot orientations
+3)
+  - adjusted logic to allow different slot orientations
+  - revised computation of slot dimensions
+  - added support for rear-inserted nut
 
 TBC:
-1*) initial revision (via TB3)
+1) initial revision (via TB3)
+
+TBR:
+1) initial revision (via TB3)
 
 UB:
-1*) initial revision
+1) initial revision
 
 TR:
 1) initial revision
-2*) adjust for laser kerf
+2) adjust for laser kerf, give plausible length

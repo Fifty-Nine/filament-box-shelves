@@ -469,14 +469,16 @@ def main(show_preview: bool, output_dir: Path | None):
         sketch_exporter.add_layer("Engrave", color=b.ColorIndex.BLUE)
         sketch_exporter.add_layer("Cut", color=b.ColorIndex.RED)
 
-        rail_sketches = rail_sketch(test_rail_length, "TR1")
+        rail_sketches = rail_sketch(test_rail_length, "TR2")
         sketch_exporter.add_shape(rail_sketches[0].sketch, layer="Cut")
         sketch_exporter.add_shape(rail_sketches[1].sketch, layer="Engrave")
 
-        sketch_exporter.write(str(output_dir / "test_rail_1.dxf"))
+        sketch_exporter.write(str(output_dir / "TR2.dxf"))
 
-        b.export_stl(tb.part, str(output_dir / "test_bracket_perpendicular.stl"))  # type: ignore[arg-type]
-        b.export_stl(tbc.part, str(output_dir / "test_bracket_collinear.stl"))  # type: ignore[arg-type]
+        b.export_stl(nn(tb.part), str(output_dir / "TB3.stl"))
+        b.export_stl(nn(tbc.part), str(output_dir / "TBC1.stl"))
+        b.export_stl(nn(tbr.part), str(output_dir / "TBR1.stl"))
+        b.export_stl(nn(ub.part), str(output_dir / "UB1.stl"))
 
 
 if __name__ == "__main__":
