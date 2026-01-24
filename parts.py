@@ -22,6 +22,7 @@ __all__ = [
 # ##### Part ID codes ######
 # TBC - Test Bracket with slot colinear with joining axis
 # TB - Test Bracket with slot perpendicular to joining axis
+# TBR - Test bracket with rear-embedded hex nut.
 # TR - Test Rail
 # UB - Universal bracket (rear)
 
@@ -51,7 +52,7 @@ class DesignParameters:
     rail_width: float = 15
     cant_angle: float = 3
     nut_height: float = 3
-    nut_radius: float = 7.8
+    nut_circumdiameter: float = 7.8
     bolt_hole_diameter: float = 4.5
     shell_thickness: float = 5
     rail_slot_depth: float = 25
@@ -100,7 +101,7 @@ def hex_nut() -> b.BuildPart:
     if _NUT_TEMPLATE is None:
         with b.BuildPart() as p:
             with b.BuildSketch():
-                b.RegularPolygon(PARAMS.nut_radius / 2, 6)
+                b.RegularPolygon(PARAMS.nut_circumdiameter / 2, 6)
                 b.Circle(PARAMS.bolt_hole_diameter / 2, mode=b.Mode.SUBTRACT)
 
             b.extrude(amount=PARAMS.nut_height)
@@ -109,7 +110,59 @@ def hex_nut() -> b.BuildPart:
     return copy.copy(_NUT_TEMPLATE)
 
 
-def basic_bracket(slat_width: float, perpendicular_slot: bool = False, with_label: str | None = None) -> b.BuildPart:
+def build_slot_cutter(nut: b.RegularPolygon,
+                      slot_axis_unit: b.VectorLike,
+                      up_axis_unit: b.VectorLike,
+                      nut_center_depth: float) -> b.Part:
+    """Builds a cutter for a hex nut slot."""
+    slot_axis_unit = b.Vector(*slot_axis_unit)
+    up_axis_unit = b.Vector(*up_axis_unit)
+    third_axis_unit = up_axis_unit.cross(slot_axis_unit)
+
+    slot_axis = b.Axis((0, 0, 0), slot_axis_unit)
+    up_axis = b.Axis((0, 0, 0), up_axis_unit)
+    third_axis = b.Axis((0, 0, 0), third_axis_unit)
+
+    points = nut.vertices().sort_by(slot_axis)
+
+    min_pt = points[0].center()
+    flat_pts: list[b.Vector] = [pt.center() for pt in points[1:3].sort_by(third_axis)]
+    workplane = b.Plane(x_dir=slot_axis_unit, axis=up_axis)
+
+    # The cutter's profile is defined by the nut's rearmost vertex and two adjacent vertices.
+    # The distance from the nut's center to the plane containing these adjacent vertices,
+    # along the slot axis, is half the nut's side length. For a regular hexagon,
+    # the side length (s) equals the circumradius (r), which is half the circumdiameter (D).
+    # Thus, this additional distance (d) is: d = s / 2 = r / 2 = (D / 2) / 2 = D / 4.
+    # This `D / 4` is added to `nut_center_depth` (distance from origin to wall)
+    # to determine the total depth for the cutter.
+    nut_flats_depth = (nut_center_depth
+                       + PARAMS.nut_circumdiameter / 4)
+
+    with b.BuildPart() as cutter:
+        with b.BuildSketch(workplane) as profile:
+            poly_points = cast(list[b.Vector], [
+                workplane.to_local_coords(pt) for pt in (
+                    flat_pts[0], min_pt, flat_pts[1],
+                    flat_pts[1] + (slot_axis_unit * nut_flats_depth),
+                    flat_pts[0] + (slot_axis_unit * nut_flats_depth)
+                )
+            ])
+            with b.Locations(poly_points[1]):
+                b.Polygon(*poly_points, align=(b.Align.MIN, b.Align.CENTER))
+
+        b.extrude(profile.sketch,
+                  amount=PARAMS.nut_height / 2,
+                  dir=up_axis_unit,
+                  both=True)
+
+    return nn(cutter.part)
+
+
+def basic_bracket(slat_width: float,
+                  perpendicular_slot: bool = False,
+                  rear_nut: bool = False,
+                  with_label: str | None = None) -> b.BuildPart:
     """
     Creates a mounting bracket for mating plywood slats to a 3D printed part.
     """
@@ -119,23 +172,26 @@ def basic_bracket(slat_width: float, perpendicular_slot: bool = False, with_labe
         inner = b.Rectangle(PARAMS.rail_slot_depth,
                             slat_width)
         captive_nut = b.RegularPolygon(
-            PARAMS.nut_radius / 2 + PARAMS.tolerance, 6
-        )
+            PARAMS.nut_circumdiameter / 2, 6
+        ).rotate(b.Axis.Z, 90 if perpendicular_slot else 0)
 
-    captive_nut_points = captive_nut.vertices()
+    if not rear_nut:
+        slot_dir = (0, 1, 0) if perpendicular_slot else (1, 0, 0)
+        up_dir = (0, 0, 1)
 
-    if perpendicular_slot:
-        y_nut_min = captive_nut_points.sort_by(b.Axis.Y)[0].Y
-        nut_points_x = captive_nut_points.sort_by(b.Axis.X)
-        nut_slot_width = nut_points_x[-1].X - nut_points_x[0].X
-        nut_slot_plane = b.Plane.XZ.offset(-y_nut_min)
-        extrude_dir = (0, 1, 0)
+        slot_cutter = build_slot_cutter(captive_nut,
+                                        slot_dir,
+                                        up_dir,
+                                        (slat_width / 2 + PARAMS.shell_thickness
+                                         if perpendicular_slot else PARAMS.rail_slot_depth / 2))
+
+        cutter_position = (0, 0, PARAMS.shell_thickness / 2)
+
     else:
-        x_nut_min = captive_nut_points.sort_by(b.Axis.X)[0].X
-        nut_points_y = captive_nut_points.sort_by(b.Axis.Y)
-        nut_slot_width = nut_points_y[-1].Y - nut_points_y[0].Y
-        nut_slot_plane = b.Plane.YZ.offset(x_nut_min)
-        extrude_dir = (1, 0, 0)
+        slot_cutter = nn(hex_nut().part)
+        cutter_position = (0, 0, 0)
+
+    slot_cutter = b.offset(slot_cutter, PARAMS.tolerance)
 
     with b.BuildPart() as p:
         b.extrude(inner, PARAMS.shell_thickness)
@@ -143,13 +199,8 @@ def basic_bracket(slat_width: float, perpendicular_slot: bool = False, with_labe
                   amount=PARAMS.shell_thickness + PARAMS.plywood_thickness)
         b.Hole(PARAMS.bolt_hole_diameter / 2)
 
-        with b.BuildSketch(nut_slot_plane):
-            with b.Locations((0, PARAMS.shell_thickness / 2)):
-                b.Rectangle(nut_slot_width, PARAMS.nut_height)
-                b.offset(amount=PARAMS.tolerance, kind=b.Kind.INTERSECTION)
-
-        b.extrude(amount=PARAMS.rail_slot_depth, dir=extrude_dir, mode=b.Mode.SUBTRACT)
-
+        with b.Locations(b.Location(cutter_position)):
+            b.add(slot_cutter, mode=b.Mode.SUBTRACT)
         b.RigidJoint(label="bolt_hole", joint_location=b.Location((0, 0, PARAMS.shell_thickness)))
 
         if with_label is not None:
@@ -384,6 +435,7 @@ def main(show_preview: bool, output_dir: Path | None):
     PARAMS.check()
     tb = basic_bracket(PARAMS.rail_width, perpendicular_slot=True, with_label="TB3")
     tbc = basic_bracket(PARAMS.rail_width, perpendicular_slot=False, with_label="TBC1")
+    tbr = basic_bracket(PARAMS.rail_width, rear_nut=True, with_label="TBR1")
     ub = universal_bracket(SHELF_DIMS.width, SHELF_DIMS.height, PARAMS.rail_width, PARAMS.crossbar_width, "UB1")
     ux = universal_bracket(SHELF_DIMS.height, SHELF_DIMS.width, PARAMS.rail_width, PARAMS.crossbar_width, "UX1")
     u45 = universal_bracket(SHELF_DIMS.width, SHELF_DIMS.width, PARAMS.rail_width, PARAMS.crossbar_width, "U45")
@@ -393,6 +445,7 @@ def main(show_preview: bool, output_dir: Path | None):
 
     assert (tb.part is not None
             and tbc.part is not None
+            and tbr.part is not None
             and ub.part is not None
             and rail.part is not None
             and ux.part is not None
@@ -403,7 +456,7 @@ def main(show_preview: bool, output_dir: Path | None):
 
     assembly = b.Compound([tb.part, rail.part, ub.part])
 
-    arranged_parts = b.pack([assembly, tbc.part, ux.part, u45.part], padding=5, align_z=True)
+    arranged_parts = b.pack([assembly, tbc.part, tbr.part, ux.part, u45.part], padding=5, align_z=True)
 
     if show_preview:
         show(*b.Compound(arranged_parts).solids(), colors=ColorMap.set2())
